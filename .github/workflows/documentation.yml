@@ -34,9 +34,16 @@ jobs:
         with:
           node-version: 20.x
       
-      # First, rename DOCUMENTATION.md to README.md temporarily for the action
+      # Backup original README.md and prepare DOCUMENTATION.md for translation
       - name: Prepare documentation for translation
         run: |
+          # Backup original README.md if it exists
+          if [ -f "README.md" ]; then
+            cp README.md README.md.original
+            echo "✅ Backed up original README.md"
+          fi
+          
+          # Copy DOCUMENTATION.md to README.md for translation
           if [ -f "DOCUMENTATION.md" ]; then
             cp DOCUMENTATION.md README.md
             echo "✅ Copied DOCUMENTATION.md to README.md for translation"
@@ -61,19 +68,38 @@ jobs:
             exit 1
           fi
       
-      # Clean up the temporary README.md
-      - name: Clean up temporary files
+      # Restore original README.md and clean up temporary files
+      - name: Clean up temporary files and restore README.md
         run: |
-          if [ -f "README.md" ] && [ -f "DOCUMENTATION.md" ]; then
-            rm README.md
-            echo "✅ Cleaned up temporary README.md"
+          # Restore original README.md if backup exists
+          if [ -f "README.md.original" ]; then
+            mv README.md.original README.md
+            echo "✅ Restored original README.md from backup"
+          else
+            # If no backup exists, restore from git or remove temporary file
+            if git show HEAD:README.md > /dev/null 2>&1; then
+              git checkout HEAD -- README.md
+              echo "✅ Restored README.md from git"
+            else
+              rm -f README.md
+              echo "✅ Removed temporary README.md (no original found)"
+            fi
           fi
       
       - name: Commit translated documentation
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+          # Ensure README.md is not modified (restore if needed)
+          if ! git diff --quiet HEAD -- README.md 2>/dev/null; then
+            git checkout HEAD -- README.md
+            echo "⚠️ Restored README.md to prevent accidental changes"
+          fi
+          
+          # Add only the translated DOCUMENTATION file
           git add "DOCUMENTATION.${{ matrix.language.code }}.md"
+          
           if git diff --staged --quiet; then
             echo "No changes to commit for ${{ matrix.language.name }}"
           else
