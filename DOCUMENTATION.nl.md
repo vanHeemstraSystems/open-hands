@@ -21,7 +21,7 @@ Uw documenten worden van binnen gemaakt`docs/build`.
 
 2) Verbind uw GitHub -repository met Readthedocs op<https://readthedocs.org/>
 
-1.  Gaan naar[Readthedocs](https://readthedocs.org/)en maak een account aan
+1.  Gaan naar[Readthedocs](https://readthedocs.org/) and create an account
 2.  Klik op "Een project importeren"
 3.  Verbind uw GitHub -account als u dat nog niet hebt gedaan
 4.  Selecteer uw repository in de lijst
@@ -45,7 +45,7 @@ ReadThedocs moeten automatisch webhooks instellen, maar zo niet:
 
 -   **Build mislukt**: Controleer de buildlogboeken op Readthedocs
 -   **Ontbrekende inhoud**: Zorg ervoor dat alle bestanden zijn opgenomen in uw`toctree`
--   **Formatting issues**: Controleer of uw Markdown/RestructuredText geldig is
+-   **Problemen opmaken**: Controleer of uw Markdown/RestructuredText geldig is
 -   **Afbeeldingen worden niet weergegeven**: Verifieer paden naar afbeeldingen zijn correct
 
 ## 600 - uw documentatie onderhouden
