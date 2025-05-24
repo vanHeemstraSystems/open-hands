@@ -6,16 +6,23 @@ on:
     branches:
       - main
       - master
-      - fix/documentation-translation-workflow  # Temporary: for testing the fix
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:  # Allow manual triggering for testing
 
 jobs:
   translate:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false  # Don't cancel other jobs if one fails
       matrix:
         language:
-          - { code: es, name: Spanish }  # Test with just one language first
+          - { code: zh-CN, name: Chinese Simplified }
+          - { code: zh-TW, name: Chinese Traditional }
+          - { code: hi, name: Hindi }
+          - { code: ar, name: Arabic }
+          - { code: fr, name: French }
+          - { code: de, name: German }
+          - { code: nl, name: Dutch }
+          - { code: es, name: Spanish }
     
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +78,19 @@ jobs:
             echo "No changes to commit for ${{ matrix.language.name }}"
           else
             git commit -m "docs: Added DOCUMENTATION.${{ matrix.language.code }}.md translation [skip spacelift]"
-            git push
-            echo "✅ Committed DOCUMENTATION.${{ matrix.language.code }}.md"
+            
+            # Retry push with pull/rebase in case of conflicts (race conditions)
+            for i in {1..3}; do
+              if git push; then
+                echo "✅ Successfully pushed DOCUMENTATION.${{ matrix.language.code }}.md (attempt $i)"
+                break
+              else
+                echo "⚠️ Push failed (attempt $i), pulling and retrying..."
+                git pull --rebase
+                if [ $i -eq 3 ]; then
+                  echo "❌ Failed to push after 3 attempts"
+                  exit 1
+                fi
+              fi
+            done
           fi
