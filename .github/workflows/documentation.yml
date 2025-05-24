@@ -18,20 +18,64 @@ jobs:
           - { code: hi, name: Hindi }
           - { code: ar, name: Arabic }
           - { code: fr, name: French }
-          - { code: en, name: English }
           - { code: de, name: German }
           - { code: nl, name: Dutch }
           - { code: es, name: Spanish }
     
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x  # Updated to a more recent LTS version
+          node-version: 20.x
       
-      - name: Adding DOCUMENTATION - ${{ matrix.language.name }}
-        uses: vanHeemstraSystems/translate-documentation@121643807dbea681431b57c7860cb17628417ddf # main
+      # First, rename DOCUMENTATION.md to README.md temporarily for the action
+      - name: Prepare documentation for translation
+        run: |
+          if [ -f "DOCUMENTATION.md" ]; then
+            cp DOCUMENTATION.md README.md
+            echo "✅ Copied DOCUMENTATION.md to README.md for translation"
+          else
+            echo "❌ DOCUMENTATION.md not found"
+            exit 1
+          fi
+      
+      - name: Translate DOCUMENTATION to ${{ matrix.language.name }}
+        uses: dephraiim/translate-readme@main
         with:
           LANG: ${{ matrix.language.code }}
-          COMMIT_MESSAGE: "docs: Added DOCUMENTATION.${{ matrix.language.code }}.md translation [skip spacelift]"
+      
+      # Rename the translated README back to DOCUMENTATION format
+      - name: Rename translated file
+        run: |
+          if [ -f "README.${{ matrix.language.code }}.md" ]; then
+            mv "README.${{ matrix.language.code }}.md" "DOCUMENTATION.${{ matrix.language.code }}.md"
+            echo "✅ Renamed README.${{ matrix.language.code }}.md to DOCUMENTATION.${{ matrix.language.code }}.md"
+          else
+            echo "❌ Translation failed - README.${{ matrix.language.code }}.md not found"
+            exit 1
+          fi
+      
+      # Clean up the temporary README.md
+      - name: Clean up temporary files
+        run: |
+          if [ -f "README.md" ] && [ -f "DOCUMENTATION.md" ]; then
+            rm README.md
+            echo "✅ Cleaned up temporary README.md"
+          fi
+      
+      - name: Commit translated documentation
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add "DOCUMENTATION.${{ matrix.language.code }}.md"
+          if git diff --staged --quiet; then
+            echo "No changes to commit for ${{ matrix.language.name }}"
+          else
+            git commit -m "docs: Added DOCUMENTATION.${{ matrix.language.code }}.md translation [skip spacelift]"
+            git push
+            echo "✅ Committed DOCUMENTATION.${{ matrix.language.code }}.md"
+          fi
