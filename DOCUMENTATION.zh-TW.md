@@ -37,7 +37,7 @@
 
 ReadThedocs應自動設置Webhooks，但如果沒有，則應自動設置：
 
-1.  轉到GitHub上的存儲庫設置
+1.  Go to your repository settings on GitHub
 2.  轉到Webhooks
 3.  添加帶有ReadThedocs項目設置的URL的Webhook
 
