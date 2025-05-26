@@ -29,7 +29,7 @@ Ihre Dokumente werden im Inneren erstellt`docs/build`.
 
 ## 300 - Erstellen Sie Ihre Dokumentation
 
-1.  Push your changes to GitHub
+1.  Drücken Sie Ihre Änderungen in GitHub
 2.  Readthedocs erstellen automatisch Ihre Dokumentation
 3.  Besuchen Sie Ihre Projektseite auf Redethedocs, um das Ergebnis anzuzeigen
 
@@ -41,7 +41,7 @@ Readthedocs sollten automatisch Webhooks einrichten, aber wenn nicht:
 2.  Gehen Sie zu Webhooks
 3.  Fügen Sie einen Webhook mit der URL aus Ihren Redethedocs -Projekteinstellungen hinzu
 
-## 500 - Fehlerbehebung
+## 500 - Troubleshooting
 
 -   **Build schlägt fehl**: Überprüfen Sie die Build -Protokolle auf Redethedocs
 -   **Fehlende Inhalte**: Stellen Sie sicher, dass alle Dateien in Ihrem enthalten sind`toctree`
