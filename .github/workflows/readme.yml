@@ -12,6 +12,10 @@ on:
       - 'docs/**'    # Ignore changes in docs directory
   workflow_dispatch:  # Allow manual triggering
               
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,6 +23,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0  # Fetch full history for proper git operations
           
       - name: Validate README.md content
         run: |
@@ -39,52 +44,217 @@ jobs:
           else
             echo "✅ README.md appears to contain valid project content"
           fi
+
+      - name: Sync with remote repository
+        run: |
+          # Configure git for the action
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+          # Fetch latest changes and rebase if needed
+          echo "🔄 Fetching latest changes from remote..."
+          git fetch origin
+          
+          # Check if we're behind the remote
+          LOCAL=$(git rev-parse HEAD)
+          REMOTE=$(git rev-parse origin/main)
+          
+          if [ "$LOCAL" != "$REMOTE" ]; then
+            echo "⚠️ Local branch is behind remote. Attempting to sync..."
+            git pull --rebase origin main || {
+              echo "❌ Failed to rebase. This might be due to conflicts."
+              echo "Current status:"
+              git status
+              exit 1
+            }
+            echo "✅ Successfully synced with remote"
+          else
+            echo "✅ Local branch is up to date with remote"
+          fi
+          
+      - name: Setup Python for translation
+        uses: actions/setup-python@v4
         with:
-          node-version: 20.x
-      # ISO Language Codes: https://cloud.google.com/translate/docs/languages  
-      - name: Adding README - Chinese Simplified
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: zh-CN
-          COMMIT_MESSAGE: "docs: Added README.zh-CN.md translation [skip spacelift]"
-      - name: Adding README - Chinese Traditional
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: zh-TW
-          COMMIT_MESSAGE: "docs: Added README.zh-TW.md translation [skip spacelift]"
-      - name: Adding README - Hindi
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: hi
-          COMMIT_MESSAGE: "docs: Added README.hi.md translation [skip spacelift]"
-      - name: Adding README - Arabic
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: ar
-          COMMIT_MESSAGE: "docs: Added README.ar.md translation [skip spacelift]"
-      - name: Adding README - French
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: fr
-          COMMIT_MESSAGE: "docs: Added README.fr.md translation [skip spacelift]"
-      - name: Adding README - German
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: de
-          COMMIT_MESSAGE: "docs: Added README.de.md translation [skip spacelift]"
-      - name: Adding README - Dutch
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: nl
-          COMMIT_MESSAGE: "docs: Added README.nl.md translation [skip spacelift]"
-      - name: Adding README - Spanish
-        uses: dephraiim/translate-readme@main
-        with:
-          LANG: es
-          COMMIT_MESSAGE: "docs: Added README.es.md translation [skip spacelift]"
+          python-version: '3.x'
+          
+      - name: Install translation dependencies
+        run: |
+          pip install googletrans==4.0.0rc1 requests
+
+      - name: Generate all README translations
+        run: |
+          cat > translate_readme.py << 'EOF'
+          import os
+          import re
+          from googletrans import Translator
+          import time
+          import sys
+
+          def translate_readme(target_lang, lang_code):
+              """Translate README.md to target language"""
+              print(f"🌍 Translating README to {target_lang} ({lang_code})...")
+              
+              try:
+                  # Read the original README
+                  with open('README.md', 'r', encoding='utf-8') as f:
+                      content = f.read()
+                  
+                  # Initialize translator
+                  translator = Translator()
+                  
+                  # Split content into chunks (Google Translate has limits)
+                  chunks = []
+                  current_chunk = ""
+                  lines = content.split('\n')
+                  
+                  for line in lines:
+                      if len(current_chunk + line + '\n') > 4000:  # Stay under 5000 char limit
+                          if current_chunk.strip():
+                              chunks.append(current_chunk.strip())
+                          current_chunk = line + '\n'
+                      else:
+                          current_chunk += line + '\n'
+                  
+                  if current_chunk.strip():
+                      chunks.append(current_chunk.strip())
+                  
+                  # Translate each chunk
+                  translated_chunks = []
+                  for i, chunk in enumerate(chunks):
+                      print(f"  📝 Translating chunk {i+1}/{len(chunks)}...")
+                      try:
+                          # Skip code blocks and URLs
+                          if chunk.startswith('```') or 'http' in chunk.lower():
+                              translated_chunks.append(chunk)
+                          else:
+                              result = translator.translate(chunk, dest=lang_code)
+                              translated_chunks.append(result.text)
+                          time.sleep(1)  # Rate limiting
+                      except Exception as e:
+                          print(f"  ⚠️ Error translating chunk {i+1}: {e}")
+                          translated_chunks.append(chunk)  # Use original if translation fails
+                  
+                  # Combine translated chunks
+                  translated_content = '\n'.join(translated_chunks)
+                  
+                  # Write translated README
+                  output_file = f'README.{lang_code}.md'
+                  with open(output_file, 'w', encoding='utf-8') as f:
+                      f.write(translated_content)
+                  
+                  print(f"  ✅ {output_file} created successfully")
+                  return True
+                  
+              except Exception as e:
+                  print(f"  ❌ Error translating to {target_lang}: {e}")
+                  return False
+
+          # Language mappings
+          languages = [
+              ('Chinese Simplified', 'zh-CN'),
+              ('Chinese Traditional', 'zh-TW'),
+              ('Hindi', 'hi'),
+              ('Arabic', 'ar'),
+              ('French', 'fr'),
+              ('German', 'de'),
+              ('Dutch', 'nl'),
+              ('Spanish', 'es')
+          ]
+
+          print("🚀 Starting README translation process...")
+          success_count = 0
+          
+          for lang_name, lang_code in languages:
+              if translate_readme(lang_name, lang_code):
+                  success_count += 1
+              time.sleep(2)  # Rate limiting between languages
+          
+          print(f"\n📊 Translation Summary:")
+          print(f"  ✅ Successful: {success_count}/{len(languages)}")
+          print(f"  📁 Generated files:")
+          
+          for lang_name, lang_code in languages:
+              filename = f'README.{lang_code}.md'
+              if os.path.exists(filename):
+                  size = os.path.getsize(filename)
+                  print(f"    - {filename} ({size} bytes)")
+          
+          EOF
+          
+          python translate_readme.py
+
+      - name: Commit and push translations with conflict resolution
+        run: |
+          # Configure git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Check if there are any translation files to commit
+          if ls README.*.md 1> /dev/null 2>&1; then
+            echo "📁 Found translation files to commit"
+            
+            # Add all translation files
+            git add README.*.md
+            
+            # Check if there are changes to commit
+            if git diff --staged --quiet; then
+              echo "ℹ️ No changes to commit"
+              exit 0
+            fi
+            
+            # Attempt to commit and push with retry logic
+            for attempt in 1 2 3; do
+              echo "🔄 Attempt $attempt to commit and push..."
+              
+              # Fetch latest changes
+              git fetch origin main
+              
+              # Check if we need to rebase
+              if ! git diff --quiet HEAD origin/main; then
+                echo "⚠️ Remote has new changes, rebasing..."
+                git rebase origin/main || {
+                  echo "❌ Rebase failed, aborting and retrying..."
+                  git rebase --abort
+                  continue
+                }
+              fi
+              
+              # Try to commit
+              git commit -m "docs: Add README translations [skip spacelift]
+
+              Generated translations for:
+              - Chinese Simplified (zh-CN)
+              - Chinese Traditional (zh-TW)  
+              - Hindi (hi)
+              - Arabic (ar)
+              - French (fr)
+              - German (de)
+              - Dutch (nl)
+              - Spanish (es)
+              
+              Auto-generated by GitHub Actions" || {
+                echo "❌ Commit failed, retrying..."
+                continue
+              }
+              
+              # Try to push
+              if git push origin main; then
+                echo "✅ Successfully pushed translations"
+                break
+              else
+                echo "❌ Push failed, will retry..."
+                git reset --soft HEAD~1  # Undo the commit to retry
+                sleep 5
+              fi
+              
+              if [ $attempt -eq 3 ]; then
+                echo "❌ Failed to push after 3 attempts"
+                exit 1
+              fi
+            done
+          else
+            echo "⚠️ No translation files found"
+          fi
           
       - name: Verify README.md integrity
         run: |
