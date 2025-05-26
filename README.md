@@ -1,38 +1,82 @@
-open-hands
-# Open Hands
+# Documentation
 
-> OpenHands - an AI Coding Assistant.
+Read the Docs: [vanHeemstraSystems-REPOSITORY-NAME](https://vanHeemstraSystems-REPOSITORY-NAME.readthedocs.io/en/latest/)
 
-- [DNS](./DNS.md)
-- [Documentation](./DOCUMENTATION.md)
-- [Glossary](./GLOSSARY.md)
-- [Hatch](./HATCH.md)
-- [Hosts](./HOSTS.md)
-- [Images](./IMAGES.md)
-- [Nx](./NX.md)
-- [Podman](./PODMAN.md)
-- [References](./REFERENCES.md)
-- [Requirements](./REQUIREMENTS.md)
-- [Telemetry](./TELEMETRY.md)
+## 100 - Install ReadTheDocs
 
-**Executive Summary**
+Run the following command:
 
-OpenHands is an AI coding assistant.
+```
+$ pip install sphinx sphinx_rtd_theme recommonmark
+```
 
-Generated with [Rytr](https://app.rytr.me)
+Next to create the docs run:
 
-## 100 - Introduction
+```
+$ cd docs
+$ make html
+```
 
-See [README.md](./100/README.md)
+Your docs will be created inside ```docs/build```.
 
-## 200 - Requirements
+## 200 - Autogeneration of ReadTheDocs
 
-See [README.md](./200/README.md)
+1) Make sure there is a ```.readthedocs.yml``` file at the root of your GitHub repository.
 
-## 300 - Building Our Application
+2) Connect your GitHub repository to ReadTheDocs at https://readthedocs.org/
 
-See [README.md](./300/README.md)
+1. Go to [ReadTheDocs](https://readthedocs.org/) and create an account
+2. Click "Import a Project"
+3. Connect your GitHub account if you haven't already
+4. Select your repository from the list
+5. Configure your project settings
 
-## 400 - Conclusion
+## 300 - Build Your Documentation
 
-See [README.md](./400/README.md)
+1. Push your changes to GitHub
+2. ReadTheDocs will automatically build your documentation
+3. Visit your project page on ReadTheDocs to see the result
+
+## 400 - Set Up Webhooks (Optional)
+
+ReadTheDocs should automatically set up webhooks, but if not:
+
+1. Go to your repository settings on GitHub
+2. Go to Webhooks
+3. Add a webhook with the URL from your ReadTheDocs project settings
+
+## 500 - Troubleshooting
+
+- **Build fails**: Check the build logs on ReadTheDocs
+- **Missing content**: Ensure all files are included in your `toctree`
+- **Formatting issues**: Check that your Markdown/reStructuredText is valid
+- **Images not showing**: Verify paths to images are correct
+
+## 600 - Maintaining Your Documentation
+
+- Update your documentation files as needed
+- Push changes to GitHub
+- ReadTheDocs will automatically rebuild
+- Use ReadTheDocs' versioning feature to maintain documentation for different releases
+
+## 700 - Trigger a build on ReadTheDocs
+
+On [ReadTheDocs](https://readthedocs.org/), after logging in navigate to your GitHub repository entry (e.g., ```https://app.readthedocs.org/projects/YOUR-GITHUB-REPOSITOY-NAME/```) and from the dotted menu (...) choose **Rebuild version**.
+
+## 800 - Tips
+
+- **Images**: Move images to `docs/source/_static/` and update references
+- **Code blocks**: Ensure proper syntax highlighting is specified
+- **Cross-references**: Update to use Sphinx's reference system
+- **Metadata**: Add appropriate metadata to each page for better SEO
+
+## 900 - Common Issues
+
+- **Broken links**: Double-check all links after conversion
+- **Missing images**: Ensure all image paths are updated
+- **Build failures**: Check the ReadTheDocs build logs for errors
+- **Formatting differences**: Some Markdown features might render differently in Sphinx
+
+## 1000 - View the Documentation
+
+Visit https://vanHeemstraSystems-REPOSITORY-NAME.readthedocs.io/en/latest/
