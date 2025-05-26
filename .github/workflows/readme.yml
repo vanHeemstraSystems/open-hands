@@ -6,20 +6,44 @@ on:
     branches:
       - main
       - master
-      paths:
-        - 'README.md'  # Only trigger on README.md changes
-      paths-ignore:
-        - 'docs/**'    # Ignore changes in docs directory
+    paths:
+      - 'README.md'  # Only trigger on README.md changes
+    paths-ignore:
+      - 'docs/**'    # Ignore changes in docs directory
+  workflow_dispatch:  # Allow manual triggering
               
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Setup Node.js
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
         with:
-          node-version: 12.x
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Validate README.md content
+        run: |
+          # Check if README.md contains actual project content, not documentation content
+          if grep -q "Read the Docs:" README.md && grep -q "Install ReadTheDocs" README.md; then
+            echo "❌ README.md appears to contain documentation content instead of project README"
+            echo "This suggests the documentation workflow may have overwritten README.md"
+            echo "Skipping translation to prevent translating wrong content"
+            exit 1
+          fi
+          
+          # Check if README.md contains expected project content
+          if ! grep -q "Open Hands" README.md; then
+            echo "⚠️ README.md doesn't appear to contain expected project content"
+            echo "Current README.md content (first 10 lines):"
+            head -10 README.md
+            echo "Proceeding with caution..."
+          else
+            echo "✅ README.md appears to contain valid project content"
+          fi
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
       # ISO Language Codes: https://cloud.google.com/translate/docs/languages  
       - name: Adding README - Chinese Simplified
         uses: dephraiim/translate-readme@main
@@ -61,3 +85,18 @@ jobs:
         with:
           LANG: es
           COMMIT_MESSAGE: "docs: Added README.es.md translation [skip spacelift]"
+          
+      - name: Verify README.md integrity
+        run: |
+          # Ensure the original README.md wasn't modified during translation
+          if ! git diff --quiet HEAD -- README.md 2>/dev/null; then
+            echo "⚠️ README.md was unexpectedly modified during translation"
+            echo "Restoring original README.md content"
+            git checkout HEAD -- README.md
+          else
+            echo "✅ README.md integrity maintained"
+          fi
+          
+          # Verify we have the expected translated files
+          echo "📋 Generated translation files:"
+          ls -la README.*.md 2>/dev/null || echo "No translation files found"
