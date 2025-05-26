@@ -34,19 +34,19 @@ jobs:
         with:
           node-version: 20.x
       
-      # Backup original README.md and prepare DOCUMENTATION.md for translation
+      # Prepare DOCUMENTATION.md for translation without touching README.md
       - name: Prepare documentation for translation
         run: |
-          # Backup original README.md if it exists
-          if [ -f "README.md" ]; then
-            cp README.md README.md.original
-            echo "✅ Backed up original README.md"
-          fi
-          
-          # Copy DOCUMENTATION.md to README.md for translation
+          # The translate-readme action expects a README.md file, so we temporarily rename DOCUMENTATION.md
           if [ -f "DOCUMENTATION.md" ]; then
+            # Backup the original README.md if it exists
+            if [ -f "README.md" ]; then
+              mv README.md README.md.backup
+              echo "✅ Backed up original README.md"
+            fi
+            # Copy DOCUMENTATION.md to README.md for translation
             cp DOCUMENTATION.md README.md
-            echo "✅ Copied DOCUMENTATION.md to README.md for translation"
+            echo "✅ Temporarily copied DOCUMENTATION.md to README.md for translation"
           else
             echo "❌ DOCUMENTATION.md not found"
             exit 1
@@ -57,9 +57,10 @@ jobs:
         with:
           LANG: ${{ matrix.language.code }}
       
-      # Rename the translated README back to DOCUMENTATION format
-      - name: Rename translated file
+      # Rename the translated README back to DOCUMENTATION format and restore original README.md
+      - name: Process translated file and restore README.md
         run: |
+          # Move the translated file to DOCUMENTATION format
           if [ -f "README.${{ matrix.language.code }}.md" ]; then
             mv "README.${{ matrix.language.code }}.md" "DOCUMENTATION.${{ matrix.language.code }}.md"
             echo "✅ Renamed README.${{ matrix.language.code }}.md to DOCUMENTATION.${{ matrix.language.code }}.md"
@@ -67,23 +68,15 @@ jobs:
             echo "❌ Translation failed - README.${{ matrix.language.code }}.md not found"
             exit 1
           fi
-      
-      # Restore original README.md and clean up temporary files
-      - name: Clean up temporary files and restore README.md
-        run: |
-          # Restore original README.md if backup exists
-          if [ -f "README.md.original" ]; then
-            mv README.md.original README.md
+          
+          # Restore the original README.md
+          if [ -f "README.md.backup" ]; then
+            mv README.md.backup README.md
             echo "✅ Restored original README.md from backup"
           else
-            # If no backup exists, restore from git or remove temporary file
-            if git show HEAD:README.md > /dev/null 2>&1; then
-              git checkout HEAD -- README.md
-              echo "✅ Restored README.md from git"
-            else
-              rm -f README.md
-              echo "✅ Removed temporary README.md (no original found)"
-            fi
+            # Remove the temporary README.md (it was copied from DOCUMENTATION.md)
+            rm -f README.md
+            echo "✅ Removed temporary README.md"
           fi
       
       - name: Commit translated documentation
@@ -91,11 +84,14 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           
-          # Ensure README.md is not modified (restore if needed)
+          # Verify README.md is not modified and restore if needed
           if ! git diff --quiet HEAD -- README.md 2>/dev/null; then
+            echo "⚠️ README.md was modified, restoring from HEAD"
             git checkout HEAD -- README.md
-            echo "⚠️ Restored README.md to prevent accidental changes"
           fi
+          
+          # Double-check that README.md matches what it should be
+          git status --porcelain README.md
           
           # Add only the translated DOCUMENTATION file
           git add "DOCUMENTATION.${{ matrix.language.code }}.md"
@@ -113,6 +109,11 @@ jobs:
               else
                 echo "⚠️ Push failed (attempt $i), pulling and retrying..."
                 git pull --rebase
+                # Ensure README.md is still correct after rebase
+                if ! git diff --quiet HEAD -- README.md 2>/dev/null; then
+                  git checkout HEAD -- README.md
+                  echo "⚠️ Restored README.md after rebase"
+                fi
                 if [ $i -eq 3 ]; then
                   echo "❌ Failed to push after 3 attempts"
                   exit 1
