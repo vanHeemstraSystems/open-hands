@@ -21,8 +21,6 @@ Text
 
 Generated with [Rytr](https://app.rytr.me)
 
-![Image](https://github.com/user-attachments/assets/b909e610-6ceb-4ef2-8219-ffbde0eae12e)
-
 ## 100 - Introduction
 
 See [README.md](./100/README.md)
